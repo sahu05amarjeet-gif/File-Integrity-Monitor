@@ -2,13 +2,14 @@ import hashlib
 from pathlib import Path
 import json
 import os
+import sys
 
 countModifiedFiles = 0
 countUnchangedFiles = 0
 countNewFilesDetected = 0
 countDeletedFiles = 0
 
-filePath = "Practice/monitor.json"
+filePath = "monitor.json"
 def load_json(): #load the existing dictionaries from the monitor json file
     with open(filePath, "r") as file:
         loadedJson = json.load(file)
@@ -36,11 +37,10 @@ def folderScan(userEnterFolderPath):
     new_hashes = {}
     contentsOfFolder = Path(userEnterFolderPath)
     if not Path.exists(userEnterFolderPath): #Checks for the path user enters and checks it if it exists or not
-        print(f"'{userEnterFolderPath}' doesn't exists")
-
+        return None
     if contentsOfFolder.is_file(): #Checks if the path entered is a file
         print(f"'{userEnterFolderPath}' is not a folder")
-
+        return {} #return to stop the program scanning further, also folderScan() requires dictionary thats why I used {}
     for item in contentsOfFolder.rglob("*"): #This .rglob("*") -> will search for the files and folders in the directories and sub-dir recusively in the given path object
         relative_path = item.relative_to(contentsOfFolder) #give me the relative path of the ITEMS which are starting from the monitored root (contentsOfFolder)
         relativePathStr = str(relative_path)
@@ -50,8 +50,14 @@ def folderScan(userEnterFolderPath):
                 finalHashResult = digest.hexdigest()
                 new_hashes[relativePathStr] = finalHashResult
     if len(new_hashes) == 0: #Checks if the folder exists but it has no files
-        print(f"'{userEnterFolderPath}' contains no files")
+        print(f"'{userEnterFolderPath}' contains no Files")
+        return {}
     return new_hashes
+
+new_hashes = folderScan(userEnterFolderPath)
+if new_hashes is None:
+    print("ERROR: Folder path not found")
+    sys.exit()
 
 def comparison(old_hashes, new_hashes): #requires parameters because the func doesn't know what we are iterating over
     for key in new_hashes:
@@ -83,19 +89,21 @@ try:
         new_hashes = folderScan(userEnterFolderPath)
         comparison(old_hashes, new_hashes)
         printSummary()
+        update_json()
     else:
         new_hashes = folderScan(userEnterFolderPath)
-        print("File has been created\nPlease run the program again")
+        print("No baseline found\nInitial baseline created successfully\nRun the program again to detect the changes")
 
-    update_json()
+        update_json()
 
 except FileNotFoundError:   
     print("Folder not found")
-
+# except TypeError:
+#     print("Error! Path not found")
 except json.JSONDecodeError:
     print("Json file is empty")
 
 except NotADirectoryError:
     print("Not a folder")
 
-#Note: This program how scans the files inside sub-folders recursively.
+#Note: This program now scans the files inside sub-folders recursively.

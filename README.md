@@ -94,6 +94,7 @@ Deleted files: 0
 * Real-time monitoring has not yet been implemented.
 * Error handling and input validation are still being improved.
 * The project does not yet have a graphical user interface.
+* Video files such as .mpv, .mp4 and .avi etc are currently excluded to reduce the scanning time, They are intentionally skipped, not treated as deleted.
 
 ## Future Improvements
 
@@ -103,6 +104,7 @@ Deleted files: 0
 * Add logging for detected changes.
 * Create a PyQt5 graphical interface.
 * Improve configuration and portability.
+* Allow users to configure which file types are monitored or view skipped files individually.
 * Add automated tests.
 
 ## Development History

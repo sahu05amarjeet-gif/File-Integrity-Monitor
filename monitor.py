@@ -52,12 +52,12 @@ def folderScan(userEnterFolderPath):
         relative_path = item.relative_to(contentsOfFolder) #give me the relative path of the ITEMS which are starting from the monitored root (contentsOfFolder)
         relativePathStr = str(relative_path)
 
-        if item.is_file() and item.suffix.lower() == ".mkv" or item.suffix.lower() == ".mp4" or item.suffix.lower() == ".avi" or item.suffix.lower() == ".mov" or item.suffix.lower() == ".wmv":
+        if item.is_file() and (item.suffix.lower() == ".mkv" or item.suffix.lower() == ".mp4" or item.suffix.lower() == ".avi" or item.suffix.lower() == ".mov" or item.suffix.lower() == ".wmv"):
             skipped_list.append(relativePathStr)
             global skipped_list_count
             skipped_list_count+=1
-        if item.is_file() and item.suffix.lower() != ".mkv" and item.suffix.lower() != ".mp4" and item.suffix.lower() != ".avi" and item.suffix.lower() != ".mov" and item.suffix.lower() != ".wmv":
-            # start = time.time() 
+        if item.is_file() and (item.suffix.lower() != ".mkv" and item.suffix.lower() != ".mp4" and item.suffix.lower() != ".avi" and item.suffix.lower() != ".mov" and item.suffix.lower() != ".wmv"):
+            # start = time.time() #To check how much time does a file takes to scanned
             with open(item, "rb") as file:
                 digest = hashlib.file_digest(file, "sha256")
                 finalHashResult = digest.hexdigest()
@@ -67,12 +67,13 @@ def folderScan(userEnterFolderPath):
     if len(new_hashes) == 0: #Checks if the folder exists but it has no files
         print(f"'{userEnterFolderPath}' contains no Files")
         return {}
-    return new_hashes #Always save the return value in the variable.
+    return new_hashes, skipped_list #Always save the return value in the variable. One line can return mulitple return variables
 
-new_hashes = folderScan(userEnterFolderPath)
-
-if new_hashes is None:
-    print("ERROR: Folder path not found")
+result = folderScan(userEnterFolderPath) #Called multiple returns that's why we have to use multiple var to save it
+if result is not None:
+    new_hashes, skipped_list = result #We unpack only when the result is not none.
+elif result is None:
+    print("ERROR! Path not found")
     sys.exit()
 
 def comparison(old_hashes, new_hashes): #requires parameters because the func doesn't know what we are iterating over
@@ -103,16 +104,29 @@ def comparison(old_hashes, new_hashes): #requires parameters because the func do
             countDeletedFiles+=1
 
 try:
+    # new_hashes, skipped_list = folderScan(userEnterFolderPath)
     if os.path.exists(filePath):
         old_hashes = load_json() 
         #Mistake: Don't call the scanning (Expensive) function again, causes the performance issue.
         comparison(old_hashes, new_hashes)
         printSummary()
         update_json()
+
+        #Giving the access to see the files which were skipped.
+        userAccessSkippedFiles = input("Do you wish to see the skipped files?: ").lower()
+        if userAccessSkippedFiles == "y":
+            for files in skipped_list:
+                print(f"'{files}'")
+            print("Note: These files were skipped to avoid unnecessary files scan time")
+        elif userAccessSkippedFiles == 'n':
+            print("Thankyou")
+            sys.exit()
+
+    
     else:
         #Mistake: Don't call the scanning (Expensive) function again, causes the performance issue.
-        print("No baseline found\nInitial baseline created successfully\nRun the program again to detect the changes")
         update_json()
+        print("No baseline found\nInitial baseline created successfully\nRun the program again to detect the changes")
 
 except FileNotFoundError:   
     print("Folder not found")

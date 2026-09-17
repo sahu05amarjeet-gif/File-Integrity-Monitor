@@ -3,7 +3,7 @@ from pathlib import Path
 import json
 import os
 import sys
-import time
+# import time
 
 countModifiedFiles = 0
 countUnchangedFiles = 0
@@ -17,7 +17,7 @@ def load_json(): #load the existing dictionaries from the monitor json file
         return loadedJson
 #saves the returned dictionary value into new_hashes
 
-def update_json(): #dump the value into the monitor.json file
+def update_json(new_hashes): #dump the value into the monitor.json file
     with open(filePath, "w") as file:
         json.dump(new_hashes, file)
 
@@ -31,6 +31,7 @@ def printSummary():
     print("======================")
 
 userEnterFolderPath = input("Enter the folder path: ")
+userChooseSkipExt = input("Do you wish to exclude any file from scanning?:(Y/N) ").lower()
 new_hashes = {}
 skipped_list = []
 while (userEnterFolderPath == ""): #Checks if the path is empty or not, if yes then again asks for the folder path
@@ -38,10 +39,22 @@ while (userEnterFolderPath == ""): #Checks if the path is empty or not, if yes t
     userEnterFolderPath = input("Enter the folder path: ")
 
 
-def folderScan(userEnterFolderPath):
+def folderScan(userEnterFolderPath, userChooseSkipExt):
     new_hashes = {}
     skipped_list = []
     contentsOfFolder = Path(userEnterFolderPath)
+    validateTheInput = ""
+    if userChooseSkipExt == 'y':
+        print("Tip: Skipping the large files like movies or huge docs can save the scan time")
+        validateTheInput = input("Enter the extension you want to exclude:(ex: .pdf, .mkv): ").lower()
+        if "." not in validateTheInput:
+            print("ERROR! Not a valid file extension")
+            sys.exit()
+    elif userChooseSkipExt == 'n':
+        pass
+    else:
+        print("Not a valid input\nTry again!")
+        sys.exit()
     if not contentsOfFolder.exists(): #Checks for the path user enters and checks it if it exists or not
         return None
     
@@ -52,11 +65,11 @@ def folderScan(userEnterFolderPath):
         relative_path = item.relative_to(contentsOfFolder) #give me the relative path of the ITEMS which are starting from the monitored root (contentsOfFolder)
         relativePathStr = str(relative_path)
 
-        if item.is_file() and (item.suffix.lower() == ".mkv" or item.suffix.lower() == ".mp4" or item.suffix.lower() == ".avi" or item.suffix.lower() == ".mov" or item.suffix.lower() == ".wmv"):
+        if item.is_file() and (item.suffix.lower() == validateTheInput or item.suffix.lower() == validateTheInput or item.suffix.lower() == validateTheInput or item.suffix.lower() == validateTheInput or item.suffix.lower() == validateTheInput):
             skipped_list.append(relativePathStr)
             global skipped_list_count
             skipped_list_count+=1
-        if item.is_file() and (item.suffix.lower() != ".mkv" and item.suffix.lower() != ".mp4" and item.suffix.lower() != ".avi" and item.suffix.lower() != ".mov" and item.suffix.lower() != ".wmv"):
+        if item.is_file() and (item.suffix.lower() != validateTheInput and item.suffix.lower() != validateTheInput and item.suffix.lower() != validateTheInput and item.suffix.lower() != validateTheInput and item.suffix.lower() != validateTheInput):
             # start = time.time() #To check how much time does a file takes to scanned
             with open(item, "rb") as file:
                 digest = hashlib.file_digest(file, "sha256")
@@ -64,19 +77,24 @@ def folderScan(userEnterFolderPath):
                 new_hashes[relativePathStr] = finalHashResult
             # end = time.time()
             # print(f"{relativePathStr} took: {end - start:.2f} Seconds")
-    if len(new_hashes) == 0: #Checks if the folder exists but it has no files
+    if len(new_hashes) == 0 and len(skipped_list) == 0: #Checks if the folder exists but it has no files
         print(f"'{userEnterFolderPath}' contains no Files")
-        return {}
+        sys.exit()
+    if len(new_hashes) == 0 and len(skipped_list) != 0:
+       for file in skipped_list:
+           print(f"'{file}'")
+       print(f"Your '{userEnterFolderPath}' contains only excluded file(s)")
+       sys.exit()
     return new_hashes, skipped_list #Always save the return value in the variable. One line can return mulitple return variables
-
-result = folderScan(userEnterFolderPath) #Called multiple returns that's why we have to use multiple var to save it
+         
+result = folderScan(userEnterFolderPath, userChooseSkipExt) #Called multiple returns that's why we have to use multiple var to save it
 if result is not None:
-    new_hashes, skipped_list = result #We unpack only when the result is not none.
+    new_hashes, skipped_list = result #We unpack only when the result is not none. Tuple unpacking
 elif result is None:
     print("ERROR! Path not found")
     sys.exit()
 
-def comparison(old_hashes, new_hashes): #requires parameters because the func doesn't know what we are iterating over
+def comparison(old_hashes, new_hashes, skipped_list): #requires parameters because the func doesn't know what we are iterating over
     for key in new_hashes:
         if key in old_hashes:
             if new_hashes[key] != old_hashes[key]:
@@ -95,7 +113,7 @@ def comparison(old_hashes, new_hashes): #requires parameters because the func do
     #Checking if the file is not in the new scanned result, if not then printing it's name
     for key in old_hashes:
         if key not in new_hashes and key in skipped_list:
-            print("Skipped file")
+            print(f"Skipped file '{key}'")
             
         if key not in new_hashes and key not in skipped_list:
             missingFile = key
@@ -108,24 +126,23 @@ try:
     if os.path.exists(filePath):
         old_hashes = load_json() 
         #Mistake: Don't call the scanning (Expensive) function again, causes the performance issue.
-        comparison(old_hashes, new_hashes)
+        comparison(old_hashes, new_hashes, skipped_list)
         printSummary()
-        update_json()
-
+        update_json(new_hashes)
         #Giving the access to see the files which were skipped.
-        userAccessSkippedFiles = input("Do you wish to see the skipped files?: ").lower()
-        if userAccessSkippedFiles == "y":
+        userAccessSkippedFiles = input("Do you wish to see the skipped files?(Y/N): ").lower()
+        if userAccessSkippedFiles == "y" and len(skipped_list) != 0:
             for files in skipped_list:
                 print(f"'{files}'")
-            print("Note: These files were skipped to avoid unnecessary files scan time")
+        if userAccessSkippedFiles == 'y' and len(skipped_list) == 0:
+            print("No files were skipped")
         elif userAccessSkippedFiles == 'n':
             print("Thankyou")
             sys.exit()
-
     
     else:
         #Mistake: Don't call the scanning (Expensive) function again, causes the performance issue.
-        update_json()
+        update_json(new_hashes)
         print("No baseline found\nInitial baseline created successfully\nRun the program again to detect the changes")
 
 except FileNotFoundError:   

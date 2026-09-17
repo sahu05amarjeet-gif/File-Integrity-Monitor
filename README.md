@@ -52,7 +52,7 @@ File-Integrity-Monitor/
 ### 1. Clone the repository
 
 ```bash
-git clone YOUR_GITHUB_REPOSITORY_LINK
+git clone https://github.com/sahu05amarjeet-gif/File-Integrity-Monitor
 ```
 
 ### 2. Enter the project directory

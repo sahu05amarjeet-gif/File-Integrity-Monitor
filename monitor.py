@@ -11,6 +11,7 @@ countNewFilesDetected = 0
 countDeletedFiles = 0
 skipped_list_count = 0
 filePath = "monitor.json"
+
 def load_json(): #load the existing dictionaries from the monitor json file
     with open(filePath, "r") as file:
         loadedJson = json.load(file)
@@ -18,8 +19,12 @@ def load_json(): #load the existing dictionaries from the monitor json file
 #saves the returned dictionary value into new_hashes
 
 def update_json(new_hashes): #dump the value into the monitor.json file
+    baseline = {
+        "folder_path": userEnterFolderPath,
+        "files": new_hashes
+    }
     with open(filePath, "w") as file:
-        json.dump(new_hashes, file)
+        json.dump(baseline, file)
 
 def printSummary():
     print("======================")
@@ -29,47 +34,94 @@ def printSummary():
     print(f"Deleted files: {countDeletedFiles}")
     print(f"Skipped files: {skipped_list_count}")
     print("======================")
-
+print("================================================")
 userEnterFolderPath = input("Enter the folder path: ")
-userChooseSkipExt = input("Do you wish to exclude any file from scanning?:(Y/N) ").lower()
+print("================================================")
+
 new_hashes = {}
+folderPath = {}
 skipped_list = []
 while (userEnterFolderPath == ""): #Checks if the path is empty or not, if yes then again asks for the folder path
     print("Path cannot be empty")
+    print("================================================")
     userEnterFolderPath = input("Enter the folder path: ")
+    print("================================================")
 
 
-def folderScan(userEnterFolderPath, userChooseSkipExt):
+def folderScan(userEnterFolderPath):
     new_hashes = {}
     skipped_list = []
+    validExtensions = (
+    ".jpg", ".jpeg", ".pdf", ".png", ".mkv", ".mov", ".mp4", 
+    ".wav", ".avi", ".mp3", ".gif", ".svg", ".webp", ".doc",
+    ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".odt", ".ods", 
+    ".rtf", ".txt", ".csv", ".zip", ".rar", ".7z", ".tar", 
+    ".gz", ".tar.gz", ".tgz"
+)
+
     contentsOfFolder = Path(userEnterFolderPath)
     validateTheInput = ""
-    if userChooseSkipExt == 'y':
-        print("Tip: Skipping the large files like movies or huge docs can save the scan time")
-        validateTheInput = input("Enter the extension you want to exclude:(ex: .pdf, .mkv): ").lower()
-        if "." not in validateTheInput:
-            print("ERROR! Not a valid file extension")
-            sys.exit()
-    elif userChooseSkipExt == 'n':
-        pass
-    else:
-        print("Not a valid input\nTry again!")
-        sys.exit()
+    validateDoubleInput =""
     if not contentsOfFolder.exists(): #Checks for the path user enters and checks it if it exists or not
         return None
     
     if contentsOfFolder.is_file(): #Checks if the path entered is a file
         print(f"'{userEnterFolderPath}' is not a folder")
-        return {} #return to stop the program scanning further, also folderScan() requires dictionary thats why I used {}
+        sys.exit() #to avoid any program to move further,as it will cause unpacking error
+    print("=======================================================")
+    userChooseSkipExt = input("Do you wish to exclude any file from scanning?(Y/N): ").lower()
+    print("=======================================================")
+    if userChooseSkipExt == 'y':
+        print("")
+        print("******************************************************************************")
+        print("Tip: Skipping the large files like movies or huge docs can save the scan time")
+        print("******************************************************************************")
+        print("")
+        print("==============================================================")
+        validateTheInput = input("Enter the extension you want to exclude:(ex: .pdf, .mkv): ").lower()
+        print("=============================================================")
+        # Check if the entered extension is correct and if it doesnt exists in the entered path
+        while not validateTheInput.endswith(validExtensions):
+            print("ERROR! Not a valid file extension")
+            print("==============================================================================")
+            validateTheInput = input("Enter the extension you want to exclude:(ex: .pdf, .mkv): ").lower()
+            print("==============================================================================")
+          
+    elif userChooseSkipExt == 'n':
+        print("NOTE: SCANNING ENTIRELY WILL TAKE SOME TIME AS IT WILL SCAN THROUGH THE ENTIRE HUGE FILES TOO IN A FOLDER")
+        pass
+    else:
+        print("Not a valid input\nTry again!")
+        sys.exit()
+    
+    print("==============================================================")
+    doubleInput = input("Do you want to skip more files?:(Y/N): ").lower()
+    print("==============================================================")
+    if doubleInput == 'y':
+        print("==============================================================================")
+        validateDoubleInput = input("Enter the extension you want to exclude:(ex: .pdf, .mkv): ").lower()
+        print("==============================================================================")
+
+        while not validateDoubleInput.endswith(validExtensions):
+            print("ERROR! Not a valid file extension")
+            print("==============================================================================")
+            validateDoubleInput = input("Enter the extension you want to exclude:(ex: .pdf, .mkv): ").lower()
+            print("==============================================================================")
+    elif doubleInput == 'n':
+        pass
+    else:
+        print("Not a valid input\nTry again!")
+        sys.exit()
+        
     for item in contentsOfFolder.rglob("*"): #This .rglob("*") -> will search for the files and folders in the directories and sub-dir recusively in the given path object
         relative_path = item.relative_to(contentsOfFolder) #give me the relative path of the ITEMS which are starting from the monitored root (contentsOfFolder)
         relativePathStr = str(relative_path)
 
-        if item.is_file() and (item.suffix.lower() == validateTheInput or item.suffix.lower() == validateTheInput or item.suffix.lower() == validateTheInput or item.suffix.lower() == validateTheInput or item.suffix.lower() == validateTheInput):
+        if item.is_file() and (item.suffix.lower() == validateTheInput or item.suffix.lower() == validateDoubleInput):
             skipped_list.append(relativePathStr)
             global skipped_list_count
             skipped_list_count+=1
-        if item.is_file() and (item.suffix.lower() != validateTheInput and item.suffix.lower() != validateTheInput and item.suffix.lower() != validateTheInput and item.suffix.lower() != validateTheInput and item.suffix.lower() != validateTheInput):
+        if item.is_file() and (item.suffix.lower() != validateTheInput and item.suffix.lower() != validateDoubleInput):
             # start = time.time() #To check how much time does a file takes to scanned
             with open(item, "rb") as file:
                 digest = hashlib.file_digest(file, "sha256")
@@ -87,7 +139,7 @@ def folderScan(userEnterFolderPath, userChooseSkipExt):
        sys.exit()
     return new_hashes, skipped_list #Always save the return value in the variable. One line can return mulitple return variables
          
-result = folderScan(userEnterFolderPath, userChooseSkipExt) #Called multiple returns that's why we have to use multiple var to save it
+result = folderScan(userEnterFolderPath) #Called multiple returns that's why we have to use multiple var to save it
 if result is not None:
     new_hashes, skipped_list = result #We unpack only when the result is not none. Tuple unpacking
 elif result is None:
@@ -113,7 +165,7 @@ def comparison(old_hashes, new_hashes, skipped_list): #requires parameters becau
     #Checking if the file is not in the new scanned result, if not then printing it's name
     for key in old_hashes:
         if key not in new_hashes and key in skipped_list:
-            print(f"Skipped file '{key}'")
+            pass
             
         if key not in new_hashes and key not in skipped_list:
             missingFile = key
@@ -134,11 +186,14 @@ try:
         if userAccessSkippedFiles == "y" and len(skipped_list) != 0:
             for files in skipped_list:
                 print(f"'{files}'")
+           
+                
         if userAccessSkippedFiles == 'y' and len(skipped_list) == 0:
             print("No files were skipped")
         elif userAccessSkippedFiles == 'n':
-            print("Thankyou")
+            print("Thankyou") 
             sys.exit()
+        
     
     else:
         #Mistake: Don't call the scanning (Expensive) function again, causes the performance issue.

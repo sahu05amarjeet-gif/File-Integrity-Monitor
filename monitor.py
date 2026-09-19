@@ -17,7 +17,9 @@ def load_json(): #load the existing dictionaries from the monitor json file
         loadedJson = json.load(file)
         return loadedJson
 #saves the returned dictionary value into new_hashes
-
+returnedDic = load_json()
+savedFolderPath = returnedDic["folder_path"]
+savedFilesWithHash = returnedDic["files"]
 def update_json(new_hashes): #dump the value into the monitor.json file
     baseline = {
         "folder_path": userEnterFolderPath,
@@ -47,7 +49,9 @@ while (userEnterFolderPath == ""): #Checks if the path is empty or not, if yes t
     userEnterFolderPath = input("Enter the folder path: ")
     print("================================================")
 
-
+if savedFolderPath != userEnterFolderPath:
+    print("Existing baseline belongs to another folder")
+    sys.exit()
 def folderScan(userEnterFolderPath):
     new_hashes = {}
     skipped_list = []
@@ -58,7 +62,6 @@ def folderScan(userEnterFolderPath):
     ".rtf", ".txt", ".csv", ".zip", ".rar", ".7z", ".tar", 
     ".gz", ".tar.gz", ".tgz"
 )
-
     contentsOfFolder = Path(userEnterFolderPath)
     validateTheInput = ""
     validateDoubleInput =""
@@ -71,7 +74,10 @@ def folderScan(userEnterFolderPath):
     print("=======================================================")
     userChooseSkipExt = input("Do you wish to exclude any file from scanning?(Y/N): ").lower()
     print("=======================================================")
-    if userChooseSkipExt == 'y':
+    if userChooseSkipExt == 'n':
+            print("NOTE: SCANNING ENTIRELY WILL TAKE SOME TIME AS IT WILL SCAN THROUGH THE ENTIRE HUGE FILES TOO IN A FOLDER")
+            pass
+    elif userChooseSkipExt == 'y':
         print("")
         print("******************************************************************************")
         print("Tip: Skipping the large files like movies or huge docs can save the scan time")
@@ -86,33 +92,32 @@ def folderScan(userEnterFolderPath):
             print("==============================================================================")
             validateTheInput = input("Enter the extension you want to exclude:(ex: .pdf, .mkv): ").lower()
             print("==============================================================================")
-          
-    elif userChooseSkipExt == 'n':
-        print("NOTE: SCANNING ENTIRELY WILL TAKE SOME TIME AS IT WILL SCAN THROUGH THE ENTIRE HUGE FILES TOO IN A FOLDER")
-        pass
-    else:
-        print("Not a valid input\nTry again!")
-        sys.exit()
-    
-    print("==============================================================")
-    doubleInput = input("Do you want to skip more files?:(Y/N): ").lower()
-    print("==============================================================")
-    if doubleInput == 'y':
-        print("==============================================================================")
-        validateDoubleInput = input("Enter the extension you want to exclude:(ex: .pdf, .mkv): ").lower()
-        print("==============================================================================")
 
-        while not validateDoubleInput.endswith(validExtensions):
-            print("ERROR! Not a valid file extension")
+            
+        print("==============================================================")
+        doubleInput = input("Do you want to skip more files?:(Y/N): ").lower()
+        print("==============================================================")
+        if doubleInput == 'y':
             print("==============================================================================")
             validateDoubleInput = input("Enter the extension you want to exclude:(ex: .pdf, .mkv): ").lower()
             print("==============================================================================")
-    elif doubleInput == 'n':
-        pass
+
+            while not validateDoubleInput.endswith(validExtensions):
+                print("ERROR! Not a valid file extension")
+                print("==============================================================================")
+                validateDoubleInput = input("Enter the extension you want to exclude:(ex: .pdf, .mkv): ").lower()
+                print("==============================================================================")
+        elif doubleInput == 'n':
+            pass
+        else:
+            print("Not a valid input\nTry again!")
+            sys.exit()
     else:
         print("Not a valid input\nTry again!")
         sys.exit()
-        
+                
+          
+    
     for item in contentsOfFolder.rglob("*"): #This .rglob("*") -> will search for the files and folders in the directories and sub-dir recusively in the given path object
         relative_path = item.relative_to(contentsOfFolder) #give me the relative path of the ITEMS which are starting from the monitored root (contentsOfFolder)
         relativePathStr = str(relative_path)

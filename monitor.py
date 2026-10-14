@@ -17,16 +17,14 @@ def load_json(): #load the existing dictionaries from the monitor json file
         loadedJson = json.load(file)
         return loadedJson
 #saves the returned dictionary value into new_hashes
-returnedDic = load_json()
-savedFolderPath = returnedDic["folder_path"]
-savedFilesWithHash = returnedDic["files"]
+
 def update_json(new_hashes): #dump the value into the monitor.json file
     baseline = {
         "folder_path": userEnterFolderPath,
         "files": new_hashes
     }
     with open(filePath, "w") as file:
-        json.dump(baseline, file)
+        json.dump(baseline, file, default = str)
 
 def printSummary():
     print("======================")
@@ -37,7 +35,7 @@ def printSummary():
     print(f"Skipped files: {skipped_list_count}")
     print("======================")
 print("================================================")
-userEnterFolderPath = input("Enter the folder path: ")
+userEnterFolderPath = Path(input("Enter the folder path: ")).resolve()
 print("================================================")
 
 new_hashes = {}
@@ -49,9 +47,7 @@ while (userEnterFolderPath == ""): #Checks if the path is empty or not, if yes t
     userEnterFolderPath = input("Enter the folder path: ")
     print("================================================")
 
-if savedFolderPath != userEnterFolderPath:
-    print("Existing baseline belongs to another folder")
-    sys.exit()
+
 def folderScan(userEnterFolderPath):
     new_hashes = {}
     skipped_list = []
@@ -181,12 +177,20 @@ def comparison(old_hashes, new_hashes, skipped_list): #requires parameters becau
 try:
     # new_hashes, skipped_list = folderScan(userEnterFolderPath)
     if os.path.exists(filePath):
+        returnedDic = load_json()
+        savedFolderPath = Path(returnedDic["folder_path"]).resolve()
+        savedFilesWithHash = returnedDic["files"]
         old_hashes = load_json() 
         #Mistake: Don't call the scanning (Expensive) function again, causes the performance issue.
         comparison(old_hashes, new_hashes, skipped_list)
         printSummary()
         update_json(new_hashes)
         #Giving the access to see the files which were skipped.
+        if savedFolderPath == userEnterFolderPath:
+            pass
+        else:
+            print("Baseline exists, belongs to different folder")
+            sys.exit()
         userAccessSkippedFiles = input("Do you wish to see the skipped files?(Y/N): ").lower()
         if userAccessSkippedFiles == "y" and len(skipped_list) != 0:
             for files in skipped_list:

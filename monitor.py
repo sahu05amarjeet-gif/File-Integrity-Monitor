@@ -65,7 +65,7 @@ def folderScan(userEnterFolderPath):
         return None
     
     if contentsOfFolder.is_file(): #Checks if the path entered is a file
-        print(f"'{userEnterFolderPath}' is not a folder")
+        print(f"'{userEnterFolderPath}' is not a file")
         sys.exit() #to avoid any program to move further,as it will cause unpacking error
     print("=======================================================")
     userChooseSkipExt = input("Do you wish to exclude any file from scanning?(Y/N): ").lower()
@@ -139,18 +139,12 @@ def folderScan(userEnterFolderPath):
        print(f"Your '{userEnterFolderPath}' contains only excluded file(s)")
        sys.exit()
     return new_hashes, skipped_list #Always save the return value in the variable. One line can return mulitple return variables
-         
-result = folderScan(userEnterFolderPath) #Called multiple returns that's why we have to use multiple var to save it
-if result is not None:
-    new_hashes, skipped_list = result #We unpack only when the result is not none. Tuple unpacking
-elif result is None:
-    print("ERROR! Path not found")
-    sys.exit()
 
-def comparison(old_hashes, new_hashes, skipped_list): #requires parameters because the func doesn't know what we are iterating over
+
+def comparison(new_hashes, skipped_list, savedFilesWithHash): #requires parameters because the func doesn't know what we are iterating over
     for key in new_hashes:
-        if key in old_hashes:
-            if new_hashes[key] != old_hashes[key]:
+        if key in savedFilesWithHash:
+            if new_hashes[key] != savedFilesWithHash[key]:
                 print(f"'{key}' was modified")
                 global countModifiedFiles #to modify the variable inside the function, python will not think it as a new variable
                 countModifiedFiles+=1
@@ -158,13 +152,13 @@ def comparison(old_hashes, new_hashes, skipped_list): #requires parameters becau
                 global countUnchangedFiles
                 countUnchangedFiles+=1
             print(key)
-        if key not in old_hashes:
+        if key not in savedFilesWithHash:
             print(f"New file detected: '{key}'")
             global countNewFilesDetected
             countNewFilesDetected+=1
 
     #Checking if the file is not in the new scanned result, if not then printing it's name
-    for key in old_hashes:
+    for key in savedFilesWithHash:
         if key not in new_hashes and key in skipped_list:
             pass
             
@@ -175,40 +169,49 @@ def comparison(old_hashes, new_hashes, skipped_list): #requires parameters becau
             countDeletedFiles+=1
 
 try:
-    # new_hashes, skipped_list = folderScan(userEnterFolderPath)
     if os.path.exists(filePath):
         returnedDic = load_json()
+
         savedFolderPath = Path(returnedDic["folder_path"]).resolve()
         savedFilesWithHash = returnedDic["files"]
-        old_hashes = load_json() 
-        #Mistake: Don't call the scanning (Expensive) function again, causes the performance issue.
-        comparison(old_hashes, new_hashes, skipped_list)
-        printSummary()
-        update_json(new_hashes)
-        #Giving the access to see the files which were skipped.
-        if savedFolderPath == userEnterFolderPath:
-            pass
-        else:
+
+        if savedFolderPath != userEnterFolderPath:
             print("Baseline exists, belongs to different folder")
             sys.exit()
-        userAccessSkippedFiles = input("Do you wish to see the skipped files?(Y/N): ").lower()
-        if userAccessSkippedFiles == "y" and len(skipped_list) != 0:
-            for files in skipped_list:
-                print(f"'{files}'")
-           
-                
-        if userAccessSkippedFiles == 'y' and len(skipped_list) == 0:
-            print("No files were skipped")
-        elif userAccessSkippedFiles == 'n':
-            print("Thankyou") 
-            sys.exit()
-        
-    
-    else:
-        #Mistake: Don't call the scanning (Expensive) function again, causes the performance issue.
-        update_json(new_hashes)
-        print("No baseline found\nInitial baseline created successfully\nRun the program again to detect the changes")
 
+        print("Path check reached")
+
+        result = folderScan(userEnterFolderPath)
+
+        if result is None:
+            print("ERROR! Path not found")
+            sys.exit()
+
+        new_hashes, skipped_list = result
+
+        comparison(new_hashes, skipped_list, savedFilesWithHash)
+
+        printSummary()
+
+        update_json(new_hashes)
+
+    else:
+        result = folderScan(userEnterFolderPath)
+
+        if result is None:
+            print("ERROR! Path not found")
+            sys.exit()
+
+        new_hashes, skipped_list = result
+
+        update_json(new_hashes)
+
+        print("No baseline found")
+        print("Initial baseline created successfully")
+        print("Run the program again to detect the changes")
+
+except Exception as e:
+    print(f"An error occurred: {e}")
 except FileNotFoundError:   
     print("Folder not found")
 # except TypeError:

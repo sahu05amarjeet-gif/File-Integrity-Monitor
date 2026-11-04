@@ -158,12 +158,30 @@ def validDateFolder(userEnterFolderPath):
         pass
     return isFound
 
+def userAccessSkippedFiles():
+    isFileSkipped = True
+
+    while isFileSkipped:
+        if not skipped_list:
+            print("No files were skipped")
+            break
+        userChoice = input("Do you wish to see the skipped files? (Y/N): ").lower()
+        if userChoice == "y":
+            for files in skipped_list:
+                print(f"{files}")
+            isFileSkipped = False
+        elif userChoice == "n":
+            print("Thankyou")
+            isFileSkipped = False
+        else:
+            print("Invalid Input")
+
 def comparison(new_hashes, skipped_list,
                savedFilesWithHash):  # requires parameters because the func doesn't know what we are iterating over
     for key in new_hashes:
         if key in savedFilesWithHash:
             if new_hashes[key] != savedFilesWithHash[key]:
-                print(f"'{key}' was modified")
+                print(f"'{key}' <--- WAS MODIFIED")
                 global countModifiedFiles  # to modify the variable inside the function, python will not think it as a new variable
                 countModifiedFiles += 1
             else:
@@ -171,7 +189,7 @@ def comparison(new_hashes, skipped_list,
                 countUnchangedFiles += 1
             print(key)
         if key not in savedFilesWithHash:
-            print(f"New file detected: '{key}'")
+            print(f"NEW FILE DETECTED ----> : '{key}'")
             global countNewFilesDetected
             countNewFilesDetected += 1
 
@@ -201,7 +219,7 @@ try:
             print("Baseline exists, belongs to different folder")
             sys.exit()
 
-        print("Path check reached")
+        print("Path verified")
         result = folderScan(userEnterFolderPath)
         if result is None:
             print("ERROR! Path not found")
@@ -213,6 +231,8 @@ try:
         printSummary()
 
         update_json(new_hashes)
+
+        userAccessSkippedFiles()
 
     else:
         result = folderScan(userEnterFolderPath)

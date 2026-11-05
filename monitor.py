@@ -41,19 +41,14 @@ def printSummary():
     print("======================")
 
 
-print("================================================")
-userEnterFolderPath = Path(input("Enter the folder path: ")).resolve()
-print("================================================")
+def calculate_hash(file_path):
+    with open(file_path, "rb") as file:
+        digest = hashlib.file_digest(file, "sha256")
+        finalHash = digest.hexdigest()
+    return finalHash
 
-new_hashes = {}
-folderPath = {}
-skipped_list = []
-while (userEnterFolderPath == ""):  # Checks if the path is empty or not, if yes then again asks for the folder path
-    print("Path cannot be empty")
-    print("================================================")
-    userEnterFolderPath = input("Enter the folder path: ")
-    print("================================================")
 
+# def test_calculate_hash(tmp_path):
 
 def folderScan(userEnterFolderPath):
     new_hashes = {}
@@ -119,7 +114,8 @@ def folderScan(userEnterFolderPath):
         print("Not a valid input\nTry again!")
         sys.exit()
 
-    for item in contentsOfFolder.rglob("*"):  # This .rglob("*") -> will search for the files and folders in the directories and sub-dir recusively in the given path object
+    for item in contentsOfFolder.rglob(
+            "*"):  # This .rglob("*") -> will search for the files and folders in the directories and sub-dir recusively in the given path object
         relative_path = item.relative_to(
             contentsOfFolder)  # give me the relative path of the ITEMS which are starting from the monitored root (contentsOfFolder)
         relativePathStr = str(relative_path)
@@ -130,10 +126,8 @@ def folderScan(userEnterFolderPath):
             skipped_list_count += 1
         if item.is_file() and (item.suffix.lower() != validateTheInput and item.suffix.lower() != validateDoubleInput):
             # start = time.time() #To check how much time does a file takes to scanned
-            with open(item, "rb") as file:
-                digest = hashlib.file_digest(file, "sha256")
-                finalHashResult = digest.hexdigest()
-                new_hashes[relativePathStr] = finalHashResult
+            finalHashValue = calculate_hash(item)
+            new_hashes[relativePathStr] = finalHashValue
             # end = time.time()
             # print(f"{relativePathStr} took: {end - start:.2f} Seconds")
     if len(new_hashes) == 0 and len(skipped_list) == 0:  # Checks if the folder exists but it has no files
@@ -146,17 +140,19 @@ def folderScan(userEnterFolderPath):
         sys.exit()
     return new_hashes, skipped_list  # Always save the return value in the variable. One line can return mulitple return variables
 
-def validDateFolder(userEnterFolderPath):
+
+def validDateFolder(file_path):
     isFound = True
-    if not userEnterFolderPath.exists():
+    if not file_path.exists():
         print("ERROR! Path not found")
         isFound = False
-    elif not userEnterFolderPath.is_dir():
-        print(f"'{userEnterFolderPath}' is a file not directory")
+    elif not file_path.is_dir():
+        print(f"'{file_path}' is a file not directory")
         isFound = False
     else:
         pass
     return isFound
+
 
 def userAccessSkippedFiles():
     isFileSkipped = True
@@ -175,6 +171,7 @@ def userAccessSkippedFiles():
             isFileSkipped = False
         else:
             print("Invalid Input")
+
 
 def comparison(new_hashes, skipped_list,
                savedFilesWithHash):  # requires parameters because the func doesn't know what we are iterating over
@@ -205,60 +202,75 @@ def comparison(new_hashes, skipped_list,
             countDeletedFiles += 1
 
 
-try:
-    if os.path.exists(filePath):
-        returnedDic = load_json()
+if __name__ == '__main__':
+    print("================================================")
 
-        savedFolderPath = Path(returnedDic["folder_path"]).resolve()
-        savedFilesWithHash = returnedDic["files"]
+    userInput = input("Enter the folder path: ").strip()
+    while not userInput:
+        print("Path cannot be empty")
+        userInput = input("Enter the folder path: ").strip()
 
-        # Stop the right before comparison and prints the error.
-        if not validDateFolder(userEnterFolderPath):
-            sys.exit()
-        if savedFolderPath != userEnterFolderPath:
-            print("Baseline exists, belongs to different folder")
-            sys.exit()
+    userEnterFolderPath = Path(userInput).resolve()
+    print("================================================")
 
-        print("Path verified")
-        result = folderScan(userEnterFolderPath)
-        if result is None:
-            print("ERROR! Path not found")
-            sys.exit()
-        new_hashes, skipped_list = result
+    new_hashes = {}
+    folderPath = {}
+    skipped_list = []
 
-        comparison(new_hashes, skipped_list, savedFilesWithHash)
+    try:
+        if os.path.exists(filePath):
+            returnedDic = load_json()
 
-        printSummary()
+            savedFolderPath = Path(returnedDic["folder_path"]).resolve()
+            savedFilesWithHash = returnedDic["files"]
 
-        update_json(new_hashes)
+            # Stop the right before comparison and prints the error.
+            if not validDateFolder(file_path):
+                sys.exit()
+            if savedFolderPath != userEnterFolderPath:
+                print("Baseline exists, belongs to different folder")
+                sys.exit()
 
-        userAccessSkippedFiles()
+            print("Path verified")
+            result = folderScan(userEnterFolderPath)
+            if result is None:
+                print("ERROR! Path not found")
+                sys.exit()
+            new_hashes, skipped_list = result
 
-    else:
-        result = folderScan(userEnterFolderPath)
+            comparison(new_hashes, skipped_list, savedFilesWithHash)
 
-        if result is None:
-            print("ERROR! Path not found")
-            sys.exit()
+            printSummary()
 
-        new_hashes, skipped_list = result
+            update_json(new_hashes)
 
-        update_json(new_hashes)
+            userAccessSkippedFiles()
 
-        print("No baseline found")
-        print("Initial baseline created successfully")
-        print("Run the program again to detect the changes")
+        else:
+            result = folderScan(userEnterFolderPath)
 
-except json.JSONDecodeError:
-    print("Error: monitor.json contains invalid JSON")
-except KeyError:
-    print("Warning: either folder_path or files are missing from JSON data.")
-except FileNotFoundError:
-    print("Folder not found")
-except NotADirectoryError:
-    print("Not a folder")
-except Exception as e:
-    print(f"An error occurred: {e}")
+            if result is None:
+                print("ERROR! Path not found")
+                sys.exit()
+
+            new_hashes, skipped_list = result
+
+            update_json(new_hashes)
+
+            print("No baseline found")
+            print("Initial baseline created successfully")
+            print("Run the program again to detect the changes")
+
+    except json.JSONDecodeError:
+        print("Error: monitor.json contains invalid JSON")
+    except KeyError:
+        print("Warning: either folder_path or files are missing from JSON data.")
+    except FileNotFoundError:
+        print("Folder not found")
+    except NotADirectoryError:
+        print("Not a folder")
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 # Note: Video files such as .mpv, .mp4 and .avi etc are currently excluded to reduce the scanning time.
 # They are intentionally skipped, not treated as deleted.

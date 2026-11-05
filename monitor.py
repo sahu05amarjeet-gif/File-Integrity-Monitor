@@ -173,11 +173,10 @@ def userAccessSkippedFiles():
             print("Invalid Input")
 
 
-def comparison(new_hashes, skipped_list,
-               savedFilesWithHash):  # requires parameters because the func doesn't know what we are iterating over
-    for key in new_hashes:
-        if key in savedFilesWithHash:
-            if new_hashes[key] != savedFilesWithHash[key]:
+def comparison(current_scan, skipped_scan, previous_scan):  # requires parameters because the func doesn't know what we are iterating over
+    for key in current_scan:
+        if key in previous_scan:
+            if current_scan[key] != previous_scan[key]:
                 print(f"'{key}' <--- WAS MODIFIED")
                 global countModifiedFiles  # to modify the variable inside the function, python will not think it as a new variable
                 countModifiedFiles += 1
@@ -185,17 +184,17 @@ def comparison(new_hashes, skipped_list,
                 global countUnchangedFiles
                 countUnchangedFiles += 1
             print(key)
-        if key not in savedFilesWithHash:
+        if key not in previous_scan:
             print(f"NEW FILE DETECTED ----> : '{key}'")
             global countNewFilesDetected
             countNewFilesDetected += 1
 
     # Checking if the file is not in the new scanned result, if not then printing it's name
-    for key in savedFilesWithHash:
-        if key not in new_hashes and key in skipped_list:
+    for key in previous_scan:
+        if key not in current_scan and key in skipped_scan:
             pass
 
-        if key not in new_hashes and key not in skipped_list:
+        if key not in current_scan and key not in skipped_scan:
             missingFile = key
             print(f"File deleted: {missingFile}")
             global countDeletedFiles

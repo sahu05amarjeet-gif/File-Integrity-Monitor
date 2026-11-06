@@ -3,7 +3,7 @@ import hashlib
 import monitor
 # from unittest import result
 
-from monitor import calculate_hash, validDateFolder, comparison, countUnchangedFiles
+from monitor import calculate_hash, validDateFolder, comparison, countUnchangedFiles, folderScan
 
 def test_calculate_hash(tmp_path):
     file_path = tmp_path / "test.txt"
@@ -69,3 +69,63 @@ def test_comparison_deleted_files(tmp_path, monkeypatch):
     monkeypatch.setattr(monitor, "countDeletedFiles", 0)
     comparison(currentScan, skippedScan, previousScan)
     assert monitor.countDeletedFiles == 1
+
+def test_folder_scan_new_hashes(tmp_path, monkeypatch):
+    monkeypatch.setattr("builtins.input", lambda _: "n")
+    first_folder = tmp_path / "first_folder"
+    first_folder.mkdir()
+    first_file = first_folder / "first_text.txt"
+    second_file = first_folder / "second_text.txt"
+    first_file.write_text("Hello World!")
+    second_file.write_text("Hello")
+    folder_scan = folderScan(first_folder)
+    hashes, skipped = folderScan(first_folder)
+    first_file_hash = calculate_hash(first_file)
+    second_file_hash = calculate_hash(second_file)
+    total = {"first_text.txt" : first_file_hash, #Relative file path name
+             "second_text.txt" : second_file_hash}
+    assert hashes == total
+
+def test_folder_exclusion(tmp_path, monkeypatch):
+    inputs = ["y", ".jpg", "n"]
+    input_iterator = iter(inputs)
+    monkeypatch.setattr("builtins.input", lambda  _: next(input_iterator))
+    folder = tmp_path / "check_exclusion"
+    folder.mkdir()
+    notes = folder / "notes.txt"
+    notes.write_text("This is our notes of Java Programming")
+    photos = folder / "photo.jpg"
+    photos.write_text("doraemon-and-nobita")
+    pdfs = folder / "document.pdf"
+    pdfs.write_text("school_docs")
+    hashes, skipped_list = folderScan(folder)
+    assert "photo.jpg" in skipped_list
+    assert "notes.txt" in hashes
+    assert "document.pdf" in hashes
+    assert "photo.jpg" not in hashes
+
+def test_folder_multiple_exclusion(tmp_path, monkeypatch):
+    inputs = ["y", ".mkv", "y", ".pdf"]
+    inputs_iter = iter(inputs)
+    monkeypatch.setattr("builtins.input", lambda _: next(inputs_iter))
+    folder = tmp_path / "test_multiple_exclusion"
+    folder.mkdir()
+
+    document = folder / "document.pdf"
+    document.write_text("OOPs in java vs Python")
+    photo = folder / "photo.jpg"
+    photo.write_text("happy_pics")
+    text = folder / "text.txt"
+    text.write_text("encryption")
+    movie = folder / "movie.mkv"
+    movie.write_text("lost-1080p-fhd")
+    hashes, skipped_file = folderScan(folder)
+
+    assert "movie.mkv" in skipped_file
+    assert "document.pdf" in skipped_file
+    assert "photo.jpg" in hashes
+    assert "text.txt" in hashes
+    assert "movie.mkv" not in hashes
+    assert "document.pdf" not in hashes
+
+
